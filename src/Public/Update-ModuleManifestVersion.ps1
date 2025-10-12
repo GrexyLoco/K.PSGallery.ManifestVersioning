@@ -60,21 +60,21 @@ function Update-ModuleManifestVersion {
     $validation = Test-ManifestVersion -ManifestPath $ManifestPath -NewVersion $NewVersion
     
     if (-not $validation.IsValid) {
-        Write-Error "❌ MANIFEST UPDATE FAILED!"
-        Write-Error ""
-        Write-Error "⚠️  CRITICAL: Das Manifest konnte nicht aktualisiert werden."
-        Write-Error "    Dies führt zu einem Konflikt zwischen Git-Tags und Manifest-Version."
-        Write-Error ""
-        Write-Error "📋 Mögliche Ursachen:"
+        Write-Host "❌ MANIFEST UPDATE FAILED!" -ForegroundColor Red
+        Write-Host ""
+        Write-Host "⚠️  CRITICAL: Das Manifest konnte nicht aktualisiert werden." -ForegroundColor Yellow
+        Write-Host "    Dies führt zu einem Konflikt zwischen Git-Tags und Manifest-Version."
+        Write-Host ""
+        Write-Host "📋 Mögliche Ursachen:" -ForegroundColor Cyan
         foreach ($error in $validation.Errors) {
-            Write-Error "    • $error"
+            Write-Host "    • $error" -ForegroundColor Yellow
         }
-        Write-Error ""
-        Write-Error "🔧 Manuelle Lösung erforderlich:"
-        Write-Error "    1. Prüfe $ManifestPath auf korrekte ModuleVersion-Syntax"
-        Write-Error "    2. Aktualisiere ModuleVersion manuell auf '$NewVersion'"
-        Write-Error "    3. Commit mit Message: 'chore: update manifest to $NewVersion [skip ci]'"
-        Write-Error ""
+        Write-Host ""
+        Write-Host "🔧 Manuelle Lösung erforderlich:" -ForegroundColor Cyan
+        Write-Host "    1. Prüfe $ManifestPath auf korrekte ModuleVersion-Syntax"
+        Write-Host "    2. Aktualisiere ModuleVersion manuell auf '$NewVersion'"
+        Write-Host "    3. Commit mit Message: 'chore: update manifest to $NewVersion [skip ci]'"
+        Write-Host ""
 
         return [PSCustomObject]@{
             Success = $false
@@ -90,7 +90,7 @@ function Update-ModuleManifestVersion {
     $readResult = Read-ManifestFile -ManifestPath $ManifestPath
     
     if (-not $readResult.Success) {
-        Write-Error "❌ Failed to read manifest: $($readResult.ErrorMessage)"
+        Write-Host "❌ Failed to read manifest: $($readResult.ErrorMessage)" -ForegroundColor Red
         return [PSCustomObject]@{
             Success = $false
             OldVersion = $null
@@ -125,7 +125,7 @@ function Update-ModuleManifestVersion {
     $writeResult = Write-ManifestFile -ManifestPath $ManifestPath -NewVersion $NewVersion -Content $readResult.Content
     
     if (-not $writeResult.Success) {
-        Write-Error "❌ Failed to update manifest: $($writeResult.ErrorMessage)"
+        Write-Host "❌ Failed to update manifest: $($writeResult.ErrorMessage)" -ForegroundColor Red
         return [PSCustomObject]@{
             Success = $false
             OldVersion = $oldVersion
@@ -184,9 +184,9 @@ function Update-ModuleManifestVersion {
             Write-Host "✅ Manifest changes committed and pushed" -ForegroundColor Green
         }
         catch {
-            Write-Error "❌ Git operation failed: $_"
-            Write-Warning "⚠️  Manifest was updated locally but Git commit/push failed."
-            Write-Warning "    You may need to commit and push manually."
+            Write-Host "❌ Git operation failed: $_" -ForegroundColor Red
+            Write-Host "⚠️  Manifest was updated locally but Git commit/push failed." -ForegroundColor Yellow
+            Write-Host "    You may need to commit and push manually."
             
             return [PSCustomObject]@{
                 Success = $false
