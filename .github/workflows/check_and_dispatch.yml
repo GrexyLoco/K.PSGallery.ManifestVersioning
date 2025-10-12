@@ -1,0 +1,328 @@
+name: 🚀 Smart Powershell Module Release Pipeline - ManifestVersioning
+
+# 🎯 Triggers: Push to master branch (e.g., PR merge)
+# 📋 Required Repository Variables:
+# - UBUNTU_VERSION: Ubuntu runner version (e.g., "ubuntu-22.04")
+# 📋 Required Repository Secrets:  
+# - REPO_DISPATCH_TOKEN: Personal Access Token for cross-repo dispatch
+
+on:
+  push:
+    branches: [master, main]
+
+env:
+  # 🌍 Global environment variables for consistency
+  RELEASE_AUTHOR: "github-actions[bot]"
+  RELEASE_EMAIL: "github-actions[bot]@users.noreply.github.com"
+  MODULE_NAME: 'K.PSGallery.ManifestVersioning'
+  TARGET_REPOSITORY: ${{ vars.TARGET_REPOSITORY || 'GrexyLoco/K.PSGallery' }}
+
+jobs:
+  validate:
+    name: 🔐 Security & 🧪 Tests
+    runs-on: ${{ vars.UBUNTU_VERSION }}
+    outputs:
+      test-success: ${{ steps.validation.outputs.test-success }}
+      total-tests: ${{ steps.validation.outputs.total-tests }}
+      passed-tests: ${{ steps.validation.outputs.passed-tests }}
+      failed-tests: ${{ steps.validation.outputs.failed-tests }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 🧪 Validate PowerShell Module
+        id: validation
+        uses: GrexyLoco/K.Actions.PSModuleValidation@v1.0.1
+        with:
+          test-path: './Tests'
+          output-path: './TestResults.xml'
+          validate-all-codebase: 'false'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          module-name: ${{ env.MODULE_NAME }}
+
+  release:
+    name: 🚀 Smart Release
+    needs: validate
+    runs-on: ${{ vars.UBUNTU_VERSION }}
+    outputs:
+      new-version: ${{ steps.version.outputs.newVersion }}
+      bump-type: ${{ steps.version.outputs.bumpType }}
+      release-created: ${{ steps.version.outputs.bumpType != 'none' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: ⬆️ Analyze next version
+        id: version
+        uses: GrexyLoco/K.Actions.NextVersion@latest
+        with:
+          branchName: ${{ github.ref_name }}
+
+      - name: 🛑 Skip if no changes
+        if: steps.version.outputs.bumpType == 'none'
+        run: |
+          echo "## 🔁 No Release Required" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "No version changes detected. Skipping release." >> $GITHUB_STEP_SUMMARY
+          echo "ℹ️ **No changes detected** - workflow will exit gracefully" >> $GITHUB_STEP_SUMMARY
+          
+          echo "## 🔁 No Release Required"
+          echo "No version changes detected. Skipping release."
+          echo "ℹ️ Workflow will exit gracefully"
+
+      - name: 📝 Update PowerShell Module Version
+        if: steps.version.outputs.bumpType != 'none'
+        shell: pwsh
+        run: |
+          Write-Host "🔧 Updating PSD1 ModuleVersion..."
+          
+          # 📝 Summary output
+          "## 📝 PowerShell Module Version Update" >> $env:GITHUB_STEP_SUMMARY
+          "" >> $env:GITHUB_STEP_SUMMARY
+          
+          # 🔍 Find PSD1 files in current directory
+          $psd1Files = Get-ChildItem -Filter "*.psd1" -File
+          
+          if ($psd1Files.Count -eq 0) {
+            Write-Host "⚠️ No PSD1 files found - skipping version update"
+            "⚠️ **No PSD1 files found** - skipping version update" >> $env:GITHUB_STEP_SUMMARY
+            exit 0
+          }
+          
+          $newVersion = "${{ steps.version.outputs.newVersion }}"
+          Write-Host "📦 New version: $newVersion"
+          
+          "**Target Version:** ``$newVersion``" >> $env:GITHUB_STEP_SUMMARY
+          "" >> $env:GITHUB_STEP_SUMMARY
+          "### Updated Files:" >> $env:GITHUB_STEP_SUMMARY
+          
+          foreach ($psd1File in $psd1Files) {
+            Write-Host "📝 Updating: $($psd1File.Name)"
+            
+            # 📖 Read current content
+            $content = Get-Content $psd1File.FullName -Raw
+            
+            # 🔄 Replace ModuleVersion
+            $updatedContent = $content -replace "ModuleVersion\s*=\s*'[^']*'", "ModuleVersion = '$newVersion'"
+            
+            # ✍️ Write back
+            Set-Content -Path $psd1File.FullName -Value $updatedContent -NoNewline
+            
+            Write-Host "✅ Updated $($psd1File.Name) to version $newVersion"
+            "- ✅ ``$($psd1File.Name)`` → ``$newVersion``" >> $env:GITHUB_STEP_SUMMARY
+          }
+
+      - name: 💾 Commit PSD1 version update 
+        if: steps.version.outputs.bumpType != 'none'
+        run: |
+          git config user.name "${{ env.RELEASE_AUTHOR }}"
+          git config user.email "${{ env.RELEASE_EMAIL }}"
+          
+          # 📝 Summary header
+          echo "## 💾 Version Commit" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # 📋 Check if there are changes
+          if git diff --quiet; then
+            echo "ℹ️ No PSD1 changes to commit"
+            echo "ℹ️ **No PSD1 changes** to commit" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "📝 Committing PSD1 version update..."
+            git add "*.psd1"
+            git commit -m "🔖 Update module version to ${{ steps.version.outputs.newVersion }}
+
+            Auto-updated by release workflow
+            - Bump type: ${{ steps.version.outputs.bumpType }}
+            - Triggered by: ${{ github.actor }}"
+            
+            echo "📤 Pushing version update..."
+            git push origin ${{ github.ref_name }}
+            echo "✅ PSD1 version update committed and pushed"
+            
+            # 📝 Summary output
+            echo "✅ **PSD1 version committed and pushed**" >> $GITHUB_STEP_SUMMARY
+            echo "- Version: \`${{ steps.version.outputs.newVersion }}\`" >> $GITHUB_STEP_SUMMARY
+            echo "- Bump: \`${{ steps.version.outputs.bumpType }}\`" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: 🔄 Re-fetch after PSD1 update
+        if: steps.version.outputs.bumpType != 'none'
+        run: |
+          echo "🔄 Re-fetching repository state after PSD1 update..."
+          git fetch origin ${{ github.ref_name }}
+          git reset --hard origin/${{ github.ref_name }}
+          echo "✅ Repository state synchronized"
+
+      - name: 📦 Create GitHub Release
+        if: steps.version.outputs.bumpType != 'none'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # 📝 Summary header
+          echo "## 📦 GitHub Release Creation" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # 🎨 Custom release notes template
+          VERSION="${{ steps.version.outputs.newVersion }}"
+          MAJOR=$(echo "$VERSION" | sed -E 's/^([0-9]+)\..*/\1/')
+          MINOR=$(echo "$VERSION" | sed -E 's/^([0-9]+\.[0-9]+)\..*/\1/')
+          
+          echo "🔍 Debug: VERSION=$VERSION, MAJOR=$MAJOR, MINOR=$MINOR"
+          
+          # Create release notes
+          RELEASE_DATE=$(date -u '+%B %d, %Y at %H:%M UTC')
+          {
+            echo "## 🎉 Release v$VERSION"
+            echo ""
+            echo "> **${{ steps.version.outputs.bumpType }}** release • Released on $RELEASE_DATE"
+            echo ""
+            echo "### 📦 Quick Access Links"
+            echo "- 🔗 **[📦 PowerShell Gallery](https://www.powershellgallery.com/packages/K.PSGallery.ManifestVersioning/$VERSION)** - Install with \`Install-Module\`"
+            echo "- 📁 **[🔧 Source Code](https://github.com/${{ github.repository }})** - View the source"
+            echo "- 🏷️ **[🎯 This Release](https://github.com/${{ github.repository }}/releases/tag/v$VERSION)** - Release details"
+            echo ""
+            echo "### 🚀 Installation & Usage"
+            echo '```powershell'
+            echo "# Install from PowerShell Gallery"
+            echo "Install-Module -Name K.PSGallery.ManifestVersioning -RequiredVersion $VERSION"
+            echo ""
+            echo "# Update manifest version"
+            echo "Update-ModuleManifestVersion -ManifestPath ./MyModule.psd1 -NewVersion '1.2.3'"
+            echo '```'
+            echo ""
+            echo "### 🔄 PowerShell Gallery"
+            echo "This module will be automatically published to [PowerShell Gallery](https://www.powershellgallery.com/packages/K.PSGallery.ManifestVersioning) within minutes."
+            echo ""
+            echo "---"
+            echo "*Generated by [K.Actions.NextVersion](https://github.com/GrexyLoco/K.Actions.NextVersion)*"
+          } > release_notes.md
+          
+          RELEASE_TAG="v${{ steps.version.outputs.newVersion }}"
+          
+          # Create release as DRAFT
+          IS_PRERELEASE="false"
+          if [[ "$VERSION" =~ (alpha|beta|rc|preview|pre) ]]; then
+            IS_PRERELEASE="true"
+            echo "🧪 Creating prerelease as DRAFT..."
+            gh release create "$RELEASE_TAG" \
+              --title "🧪 Prerelease $RELEASE_TAG" \
+              --notes-file release_notes.md \
+              --generate-notes \
+              --prerelease \
+              --draft || echo "⚠️ Release creation warning (may already exist)"
+          else
+            echo "🚀 Creating stable release as DRAFT..."
+            gh release create "$RELEASE_TAG" \
+              --title "🚀 Release $RELEASE_TAG" \
+              --notes-file release_notes.md \
+              --generate-notes \
+              --draft || echo "⚠️ Release creation warning (may already exist)"
+          fi
+
+      - name: 🏷️ Create smart tags  
+        if: steps.version.outputs.bumpType != 'none'
+        run: |
+          git config user.name "${{ env.RELEASE_AUTHOR }}"
+          git config user.email "${{ env.RELEASE_EMAIL }}"
+          
+          echo "## 🏷️ Smart Tag Management" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          NEW_TAG="v${{ steps.version.outputs.newVersion }}"
+          MAJOR=$(echo "$NEW_TAG" | sed -E 's/^v([0-9]+)\..*/\1/')
+          MINOR=$(echo "$NEW_TAG" | sed -E 's/^v[0-9]+\.([0-9]+)\..*/\1/')
+          VERSION="${{ steps.version.outputs.newVersion }}"
+          
+          # Only create smart tags for stable releases
+          if [[ ! "$VERSION" =~ (alpha|beta|rc|preview|pre) ]]; then
+            MINOR_TAG="v$MAJOR.$MINOR"
+            MAJOR_TAG="v$MAJOR"
+            
+            echo "### 🎯 Tags Updated:" >> $GITHUB_STEP_SUMMARY
+            
+            case "${{ steps.version.outputs.bumpType }}" in
+              "patch")
+                git push --delete origin "$MINOR_TAG" 2>/dev/null || true
+                git push --delete origin "$MAJOR_TAG" 2>/dev/null || true
+                git tag -d "$MINOR_TAG" 2>/dev/null || true
+                git tag -d "$MAJOR_TAG" 2>/dev/null || true
+                git tag "$MINOR_TAG" "$NEW_TAG" && git push origin "$MINOR_TAG"
+                git tag "$MAJOR_TAG" "$NEW_TAG" && git push origin "$MAJOR_TAG"
+                echo "- ✅ Updated: \`$MINOR_TAG\` → \`$NEW_TAG\`" >> $GITHUB_STEP_SUMMARY
+                echo "- ✅ Updated: \`$MAJOR_TAG\` → \`$NEW_TAG\`" >> $GITHUB_STEP_SUMMARY
+                ;;
+              "minor") 
+                git tag "$MINOR_TAG" "$NEW_TAG" && git push origin "$MINOR_TAG"
+                git tag -f "$MAJOR_TAG" "$NEW_TAG" && git push -f origin "$MAJOR_TAG"
+                echo "- 🆕 Created: \`$MINOR_TAG\` → \`$NEW_TAG\`" >> $GITHUB_STEP_SUMMARY
+                echo "- ✅ Updated: \`$MAJOR_TAG\` → \`$NEW_TAG\`" >> $GITHUB_STEP_SUMMARY
+                ;;
+              "major")
+                git tag "$MINOR_TAG" "$NEW_TAG" && git push origin "$MINOR_TAG"  
+                git tag "$MAJOR_TAG" "$NEW_TAG" && git push origin "$MAJOR_TAG"
+                echo "- 🆕 Created: \`$MINOR_TAG\` → \`$NEW_TAG\`" >> $GITHUB_STEP_SUMMARY
+                echo "- 🆕 Created: \`$MAJOR_TAG\` → \`$NEW_TAG\`" >> $GITHUB_STEP_SUMMARY
+                ;;
+            esac
+            
+            git push --delete origin "latest" 2>/dev/null || true
+            git tag -d "latest" 2>/dev/null || true
+            git tag "latest" "$NEW_TAG" && git push origin "latest"
+            echo "- ✅ Updated: \`latest\` → \`$NEW_TAG\`" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⏭️ **Skipped smart tags** (prerelease version)" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: 🚀 Publish Release (Final Step)
+        if: steps.version.outputs.bumpType != 'none'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "## 🚀 Release Publication Status" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          RELEASE_TAG="v${{ steps.version.outputs.newVersion }}"
+          VERSION="${{ steps.version.outputs.newVersion }}"
+          
+          if [[ "$VERSION" =~ (alpha|beta|rc|preview|pre) ]]; then
+            echo "🧪 Publishing prerelease..."
+            gh release edit "$RELEASE_TAG" --draft=false || echo "⚠️ Publication warning"
+            echo "🧪 **Prerelease published:** \`$RELEASE_TAG\`" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "🚀 Publishing stable release with latest flag..."
+            gh release edit "$RELEASE_TAG" --draft=false --latest || echo "⚠️ Publication warning"
+            echo "🚀 **Stable release published and marked latest:** \`$RELEASE_TAG\`" >> $GITHUB_STEP_SUMMARY
+          fi
+
+  notify:
+    name: 📣 Deploy Notification
+    needs: [validate, release]
+    if: needs.release.outputs.release-created == 'true' && needs.validate.outputs.test-success == 'true'
+    runs-on: ${{ vars.UBUNTU_VERSION }}
+    steps:
+      - name: 📣 Notify deployment pipeline
+        run: |
+          echo "## 📣 Deployment Notification" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Target:** 🎯 K.PSGallery deployment" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** \`v${{ needs.release.outputs.new-version }}\`" >> $GITHUB_STEP_SUMMARY
+
+      - name: Execute repository dispatch
+        uses: peter-evans/repository-dispatch@v3
+        with:
+            token: ${{ secrets.REPO_DISPATCH_TOKEN }}
+            repository: grexyloco/K.PSGallery
+            event-type: publish_module
+            client-payload: |
+              {
+                "repo": "${{ github.repository }}",
+                "tag": "v${{ needs.release.outputs.new-version }}",
+                "bump_type": "${{ needs.release.outputs.bump-type }}",
+                "triggered_by": "${{ github.actor }}",
+                "source_url": "https://github.com/${{ github.repository }}",
+                "gallery_url": "https://www.powershellgallery.com/packages/K.PSGallery.ManifestVersioning/${{ needs.release.outputs.new-version }}"
+              }
