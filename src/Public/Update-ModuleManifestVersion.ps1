@@ -5,7 +5,7 @@ function Update-ModuleManifestVersion {
 
     .DESCRIPTION
     Updates the ModuleVersion field in a PowerShell module manifest file using regex replacement.
-    Optionally commits and pushes changes to Git with customizable commit messages.
+    Optionally commits and pushes changes to Git with customizable commit message.
 
     .PARAMETER ManifestPath
     Path to the .psd1 manifest file to update.
