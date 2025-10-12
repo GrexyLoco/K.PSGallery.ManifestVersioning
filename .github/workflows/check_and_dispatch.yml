@@ -32,7 +32,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: 🧪 Validate PowerShell Module
+      - name: 🧪 Validate PowerShell Module 
         id: validation
         uses: GrexyLoco/K.Actions.PSModuleValidation@v1.0.1
         with:
