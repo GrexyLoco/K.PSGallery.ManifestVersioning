@@ -33,11 +33,44 @@ function Write-ManifestFile {
         [string]$Content
     )
 
-    # TODO: Implement regex-based version update logic
-    Write-Warning "Write-ManifestFile not yet implemented"
-    return @{
-        Success = $false
-        UpdatedContent = $Content
-        ErrorMessage = "Function not implemented"
+    Write-Verbose "Updating ModuleVersion to: $NewVersion"
+
+    try {
+        # Update ModuleVersion using regex
+        # Matches patterns like: ModuleVersion = '1.0.0' or ModuleVersion='1.0.0' or ModuleVersion = "1.0.0"
+        # Preserves the quote style (single or double)
+        $updatedContent = $Content -replace "ModuleVersion\s*=\s*['\`"]([^'\`"]+)['\`"]", "ModuleVersion = '$NewVersion'"
+        
+        # Verify the replacement worked by checking if the new version is present
+        if ($updatedContent -match "ModuleVersion\s*=\s*['\`"]$([regex]::Escape($NewVersion))['\`"]") {
+            Write-Verbose "Regex replacement successful"
+            
+            # Write the updated content back to the file
+            Set-Content -Path $ManifestPath -Value $updatedContent -NoNewline -ErrorAction Stop
+            
+            Write-Verbose "Manifest file updated successfully"
+
+            return [PSCustomObject]@{
+                Success = $true
+                UpdatedContent = $updatedContent
+                ErrorMessage = $null
+            }
+        }
+        else {
+            Write-Error "Regex replacement validation failed - ModuleVersion not updated correctly"
+            return [PSCustomObject]@{
+                Success = $false
+                UpdatedContent = $Content
+                ErrorMessage = "Regex replacement validation failed - ModuleVersion format may be invalid or not found"
+            }
+        }
+    }
+    catch {
+        Write-Error "Failed to write manifest file: $_"
+        return [PSCustomObject]@{
+            Success = $false
+            UpdatedContent = $Content
+            ErrorMessage = "Failed to write manifest file: $_"
+        }
     }
 }
