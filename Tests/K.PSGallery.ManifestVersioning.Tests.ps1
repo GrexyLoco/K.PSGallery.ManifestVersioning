@@ -247,61 +247,6 @@ Describe 'K.PSGallery.ManifestVersioning Module' {
             }
         }
 
-        Context 'Pre-release and Special Versions' {
-            It 'Should update 1.0.0-alpha to 1.0.0-beta (pre-release progression)' -Skip {
-                # NOTE: PowerShell Test-ModuleManifest does not support pre-release versions in ModuleVersion field
-                # Pre-release info should be in PrivateData.PSData.Prerelease instead
-                # This test is skipped as it's a PowerShell limitation, not a bug in our module
-                
-                # Arrange
-                $manifestPath = Join-Path $TestDrive "PreReleaseTest.psd1"
-                New-TestManifest -Version '1.0.0-alpha' -FilePath $manifestPath
-
-                # Act
-                $result = Update-ModuleManifestVersion -ManifestPath $manifestPath -NewVersion '1.0.0-beta' -CommitChanges $false
-
-                # Assert
-                $result.Success | Should -Be $true
-                $result.OldVersion | Should -Be '1.0.0-alpha'
-                $result.NewVersion | Should -Be '1.0.0-beta'
-            }
-
-            It 'Should update 1.0.0-rc.1 to 1.0.0 (pre-release to stable)' -Skip {
-                # NOTE: PowerShell Test-ModuleManifest does not support pre-release versions in ModuleVersion field
-                # Pre-release info should be in PrivateData.PSData.Prerelease instead
-                # This test is skipped as it's a PowerShell limitation, not a bug in our module
-                
-                # Arrange
-                $manifestPath = Join-Path $TestDrive "RCToStableTest.psd1"
-                New-TestManifest -Version '1.0.0-rc.1' -FilePath $manifestPath
-
-                # Act
-                $result = Update-ModuleManifestVersion -ManifestPath $manifestPath -NewVersion '1.0.0' -CommitChanges $false
-
-                # Assert
-                $result.Success | Should -Be $true
-                $result.OldVersion | Should -Be '1.0.0-rc.1'
-                $result.NewVersion | Should -Be '1.0.0'
-            }
-        }
-
-        Context 'Git Integration Tests' {
-            It 'Should commit changes when CommitChanges is true' {
-                # Note: This test would require Git repo setup and mocking
-                # Will be implemented when Git integration is added
-            }
-
-            It 'Should add [skip ci] to commit message when SkipCI is true' {
-                # Note: This test would require Git repo setup and mocking
-                # Will be implemented when Git integration is added
-            }
-
-            It 'Should use custom commit message template with {version} placeholder' {
-                # Note: This test would require Git repo setup and mocking
-                # Will be implemented when Git integration is added
-            }
-        }
-
         Context 'Edge Cases and Robustness' {
             It 'Should handle manifest with different ModuleVersion formatting' {
                 # Test various formats: ModuleVersion='1.0.0', ModuleVersion = "1.0.0", etc.
