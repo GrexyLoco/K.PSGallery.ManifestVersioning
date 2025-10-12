@@ -10,6 +10,10 @@ on:
   push:
     branches: [master, main]
 
+permissions:
+  contents: write  # Required for git push, creating releases, and tags
+  pull-requests: write  # Required for pull request operations
+
 env:
   # 🌍 Global environment variables for consistency
   RELEASE_AUTHOR: "github-actions[bot]"
