@@ -86,7 +86,7 @@ function Update-ModuleManifestVersion {
     }
 
     # Step 2: Read current manifest
-    Write-Verbose "Step 2: Reading current manifest.."
+    Write-Verbose "Step 2: Reading current manifest..."
     $readResult = Read-ManifestFile -ManifestPath $ManifestPath
     
     if (-not $readResult.Success) {
