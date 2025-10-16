@@ -4,7 +4,7 @@
     # Generated on: 10/12/2025
 
     RootModule = 'K.PSGallery.ManifestVersioning.psm1'
-    ModuleVersion = '0.0.5'
+    ModuleVersion = '0.0.6'
     GUID = '13df5873-962f-4431-95d2-01dec5569f1b'
     Author = 'GrexyLoco'
     CompanyName = 'GrexyLoco'
