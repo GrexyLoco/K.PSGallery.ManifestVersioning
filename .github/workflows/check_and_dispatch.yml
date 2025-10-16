@@ -229,59 +229,48 @@ jobs:
               --draft || echo "⚠️ Release creation warning (may already exist)"
           fi
 
-      - name: 🏷️ Create smart tags  
+      - name: 🏷️ Create semantic release tags with Smartagr
         if: steps.version.outputs.bumpType != 'none'
+        shell: pwsh
         run: |
-          git config user.name "${{ env.RELEASE_AUTHOR }}"
-          git config user.email "${{ env.RELEASE_EMAIL }}"
+          # 📦 Install K.PSGallery.Smartagr module
+          Write-Host "📦 Installing K.PSGallery.Smartagr..."
+          Install-Module K.PSGallery.Smartagr -Force -Scope CurrentUser -AllowClobber
+          Import-Module K.PSGallery.Smartagr -Verbose
           
-          echo "## 🏷️ Smart Tag Management" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
+          # 📝 Summary header
+          "## 🏷️ Semantic Tag Management (Smartagr)" >> $env:GITHUB_STEP_SUMMARY
+          "" >> $env:GITHUB_STEP_SUMMARY
           
-          NEW_TAG="v${{ steps.version.outputs.newVersion }}"
-          MAJOR=$(echo "$NEW_TAG" | sed -E 's/^v([0-9]+)\..*/\1/')
-          MINOR=$(echo "$NEW_TAG" | sed -E 's/^v[0-9]+\.([0-9]+)\..*/\1/')
-          VERSION="${{ steps.version.outputs.newVersion }}"
+          $targetVersion = "v${{ steps.version.outputs.newVersion }}"
+          $repoPath = "${{ github.workspace }}"
           
-          # Only create smart tags for stable releases
-          if [[ ! "$VERSION" =~ (alpha|beta|rc|preview|pre) ]]; then
-            MINOR_TAG="v$MAJOR.$MINOR"
-            MAJOR_TAG="v$MAJOR"
+          Write-Host "🎯 Target version: $targetVersion"
+          Write-Host "📁 Repository path: $repoPath"
+          
+          # 🏷️ Create semantic release tags using Smartagr
+          try {
+            New-SemanticReleaseTags `
+              -TargetVersion $targetVersion `
+              -RepositoryPath $repoPath `
+              -PushToRemote `
+              -Verbose
             
-            echo "### 🎯 Tags Updated:" >> $GITHUB_STEP_SUMMARY
-            
-            case "${{ steps.version.outputs.bumpType }}" in
-              "patch")
-                git push --delete origin "$MINOR_TAG" 2>/dev/null || true
-                git push --delete origin "$MAJOR_TAG" 2>/dev/null || true
-                git tag -d "$MINOR_TAG" 2>/dev/null || true
-                git tag -d "$MAJOR_TAG" 2>/dev/null || true
-                git tag "$MINOR_TAG" "$NEW_TAG" && git push origin "$MINOR_TAG"
-                git tag "$MAJOR_TAG" "$NEW_TAG" && git push origin "$MAJOR_TAG"
-                echo "- ✅ Updated: \`$MINOR_TAG\` → \`$NEW_TAG\`" >> $GITHUB_STEP_SUMMARY
-                echo "- ✅ Updated: \`$MAJOR_TAG\` → \`$NEW_TAG\`" >> $GITHUB_STEP_SUMMARY
-                ;;
-              "minor") 
-                git tag "$MINOR_TAG" "$NEW_TAG" && git push origin "$MINOR_TAG"
-                git tag -f "$MAJOR_TAG" "$NEW_TAG" && git push -f origin "$MAJOR_TAG"
-                echo "- 🆕 Created: \`$MINOR_TAG\` → \`$NEW_TAG\`" >> $GITHUB_STEP_SUMMARY
-                echo "- ✅ Updated: \`$MAJOR_TAG\` → \`$NEW_TAG\`" >> $GITHUB_STEP_SUMMARY
-                ;;
-              "major")
-                git tag "$MINOR_TAG" "$NEW_TAG" && git push origin "$MINOR_TAG"  
-                git tag "$MAJOR_TAG" "$NEW_TAG" && git push origin "$MAJOR_TAG"
-                echo "- 🆕 Created: \`$MINOR_TAG\` → \`$NEW_TAG\`" >> $GITHUB_STEP_SUMMARY
-                echo "- 🆕 Created: \`$MAJOR_TAG\` → \`$NEW_TAG\`" >> $GITHUB_STEP_SUMMARY
-                ;;
-            esac
-            
-            git push --delete origin "latest" 2>/dev/null || true
-            git tag -d "latest" 2>/dev/null || true
-            git tag "latest" "$NEW_TAG" && git push origin "latest"
-            echo "- ✅ Updated: \`latest\` → \`$NEW_TAG\`" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "⏭️ **Skipped smart tags** (prerelease version)" >> $GITHUB_STEP_SUMMARY
-          fi
+            Write-Host "✅ Semantic release tags created successfully"
+            "✅ **Semantic release tags created successfully**" >> $env:GITHUB_STEP_SUMMARY
+            "" >> $env:GITHUB_STEP_SUMMARY
+            "- Target version: ``$targetVersion``" >> $env:GITHUB_STEP_SUMMARY
+            "- Bump type: ``${{ steps.version.outputs.bumpType }}``" >> $env:GITHUB_STEP_SUMMARY
+            "" >> $env:GITHUB_STEP_SUMMARY
+            "🔗 *Powered by [K.PSGallery.Smartagr](https://github.com/GrexyLoco/K.PSGallery.Smartagr)*" >> $env:GITHUB_STEP_SUMMARY
+          }
+          catch {
+            Write-Error "❌ Failed to create semantic tags: $_"
+            "❌ **Failed to create semantic tags**" >> $env:GITHUB_STEP_SUMMARY
+            "" >> $env:GITHUB_STEP_SUMMARY
+            "Error: ``$_``" >> $env:GITHUB_STEP_SUMMARY
+            exit 1
+          }
 
       - name: 🚀 Publish Release (Final Step)
         if: steps.version.outputs.bumpType != 'none'

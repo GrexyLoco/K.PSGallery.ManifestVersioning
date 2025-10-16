@@ -8,6 +8,23 @@
 
 PowerShell module for safely updating module manifest (.psd1) versions with Git integration and comprehensive validation.
 
+---
+
+## 📦 Release History
+
+| Version | Release Date | Type | Highlights |
+|---------|--------------|------|------------|
+| [v0.0.5](https://github.com/GrexyLoco/K.PSGallery.ManifestVersioning/releases/tag/v0.0.5) | Oct 12, 2025 | Patch | Documentation enhancements |
+| [v0.0.4](https://github.com/GrexyLoco/K.PSGallery.ManifestVersioning/releases/tag/v0.0.4) | Oct 12, 2025 | Patch | Pipeline improvements |
+| [v0.0.3](https://github.com/GrexyLoco/K.PSGallery.ManifestVersioning/releases/tag/v0.0.3) | Oct 12, 2025 | Patch | CI/CD fixes |
+| [v0.0.2](https://github.com/GrexyLoco/K.PSGallery.ManifestVersioning/releases/tag/v0.0.2) | Oct 12, 2025 | Patch | Test suite completion |
+| [v0.0.1](https://github.com/GrexyLoco/K.PSGallery.ManifestVersioning/releases/tag/v0.0.1) | Oct 12, 2025 | Patch | Initial release |
+
+**Current Stable**: [![v0.0.5](https://img.shields.io/badge/v0.0.5-stable-brightgreen?logo=github)](https://github.com/GrexyLoco/K.PSGallery.ManifestVersioning/releases/tag/v0.0.5)  
+**Smart Tags**: `latest`, `v0`, `v0.0` (all point to v0.0.5)
+
+---
+
 ## 🎯 Features
 
 ✅ **Safe Manifest Updates**: Regex-based version replacement that preserves formatting  
@@ -288,19 +305,6 @@ When an error occurs, the function returns a structured result:
 
 This module has comprehensive test coverage with **20 Pester tests** (100% pass rate).
 
-### Run Tests Locally
-
-```powershell
-# Install Pester if not already installed
-Install-Module Pester -MinimumVersion 5.0 -Force
-
-# Run all tests
-Invoke-Pester .\Tests\K.PSGallery.ManifestVersioning.Tests.ps1
-
-# Run with detailed output
-Invoke-Pester .\Tests\K.PSGallery.ManifestVersioning.Tests.ps1 -Output Detailed
-```
-
 ### Test Coverage
 
 - ✅ Module loading and function export (3 tests)
@@ -309,24 +313,6 @@ Invoke-Pester .\Tests\K.PSGallery.ManifestVersioning.Tests.ps1 -Output Detailed
 - ✅ Edge cases: large versions, formatting preservation (3 tests)
 - ✅ Private function accessibility (3 tests)
 - ✅ Real-world scenarios: 0.x→1.0.0, large versions (1 test)
-
-## 🤝 Contributing
-
-Contributions are welcome! Please follow these guidelines:
-
-1. **Fork** the repository
-2. **Create** a feature branch: `git checkout -b feature/my-feature`
-3. **Make** your changes with clear commit messages
-4. **Add tests** for new functionality (maintain 100% pass rate)
-5. **Test** locally: `Invoke-Pester .\Tests\`
-6. **Submit** a pull request with a clear description
-
-### Code Style
-
-- Use PowerShell best practices (PSScriptAnalyzer compliant)
-- Follow existing naming conventions
-- Add comment-based help for new functions
-- Use colored console output for user feedback
 
 ## 📄 License
 
@@ -340,6 +326,7 @@ Part of the **K.PSGallery ecosystem**:
 - **[K.Actions.NextVersion](https://github.com/GrexyLoco/K.Actions.NextVersion)** - Semantic version calculation and analysis
 - **[K.Actions.CreateVersionTag](https://github.com/GrexyLoco/K.Actions.CreateVersionTag)** - GitHub Action for Git tagging
 - **[K.PSGallery.GitTagging](https://github.com/GrexyLoco/K.PSGallery.GitTagging)** - PowerShell module for Git tag creation with conflict detection
+- **[K.PSGallery.Smartagr](https://github.com/GrexyLoco/K.PSGallery.Smartagr)** - Smart Git tag management with semantic versioning (integrated in CI/CD)
 - **[K.PSGallery](https://github.com/GrexyLoco/K.PSGallery)** - Automated PSGallery publishing dispatcher
 
 ## 🛠️ Development Setup
@@ -364,7 +351,8 @@ Configure these in your GitHub repository:
 The module uses `.github/workflows/check_and_dispatch.yml` for CI/CD:
 
 - **Quality Gate**: Pester tests via `K.Actions.PSModuleValidation@v1`
-- **Release**: GitHub release creation with smart tags
+- **Semantic Tagging**: Automated via `K.PSGallery.Smartagr` (moving tags: `latest`, `v0`, `v0.0`)
+- **Release**: GitHub release creation with comprehensive notes
 - **Dispatch**: Triggers PSGallery publish in K.PSGallery dispatcher repo
 
 **Required permissions**:
